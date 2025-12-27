@@ -3,7 +3,6 @@
 interface ImportMetaEnv {
     readonly GOOGLE_CLIENT_ID: string;
     readonly GOOGLE_CLIENT_SECRET: string;
-    readonly GOOGLE_SERVICE_ACCOUNT: string;
     readonly SPREADSHEET_ID: string;
     readonly ADMIN_EMAILS: string;
     readonly JWT_SECRET: string;
@@ -20,6 +19,8 @@ declare namespace App {
             email: string;
             name: string;
             picture?: string;
+            accessToken?: string;
+            refreshToken?: string;
         };
     }
 }

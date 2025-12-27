@@ -18,18 +18,21 @@ export const GET: APIRoute = async ({ url }) => {
         }
 
         // Get user info
-        const user = await getGoogleUserInfo(tokens.access_token);
+        const userInfo = await getGoogleUserInfo(tokens.access_token);
 
         // Check if email is in whitelist
-        if (!isEmailAllowed(user.email)) {
+        if (!isEmailAllowed(userInfo.email)) {
             return Response.redirect(`${import.meta.env.SITE_URL}/?error=not_authorized`, 302);
         }
 
-        // Create JWT token
-        const token = await createToken(user);
-
-        // Set cookie and redirect to admin
-        const response = Response.redirect(`${import.meta.env.SITE_URL}/admin`, 302);
+        // Create JWT token with access token for Sheets API
+        const token = await createToken({
+            email: userInfo.email,
+            name: userInfo.name,
+            picture: userInfo.picture,
+            accessToken: tokens.access_token,
+            refreshToken: tokens.refresh_token,
+        });
 
         // Create new response with cookie
         return new Response(null, {

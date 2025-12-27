@@ -1,24 +1,13 @@
 import { google } from 'googleapis';
 
-function getServiceAccount() {
-    const base64 = import.meta.env.GOOGLE_SERVICE_ACCOUNT;
-    if (!base64) {
-        throw new Error('GOOGLE_SERVICE_ACCOUNT environment variable is not set');
-    }
-    return JSON.parse(Buffer.from(base64, 'base64').toString('utf-8'));
-}
+const SPREADSHEET_ID = import.meta.env.SPREADSHEET_ID;
 
-function getSheets() {
-    const serviceAccount = getServiceAccount();
-    const auth = new google.auth.GoogleAuth({
-        credentials: serviceAccount,
-        scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-    });
-
+// Create authenticated Sheets client using OAuth access token
+function getSheets(accessToken: string) {
+    const auth = new google.auth.OAuth2();
+    auth.setCredentials({ access_token: accessToken });
     return google.sheets({ version: 'v4', auth });
 }
-
-const SPREADSHEET_ID = import.meta.env.SPREADSHEET_ID;
 
 // ============ CARS ============
 
@@ -47,13 +36,6 @@ export interface Car {
     sold_date: string;
     date_added: string;
 }
-
-const CAR_HEADERS = [
-    'id', 'status', 'brand', 'model', 'year', 'price', 'mileage',
-    'transmission', 'fuel', 'color', 'bpkb', 'description', 'features',
-    'image1', 'image2', 'image3', 'image4', 'image5', 'video_url',
-    'featured', 'badge', 'sold_date', 'date_added'
-];
 
 function rowToCar(row: string[]): Car {
     return {
@@ -111,8 +93,8 @@ function carToRow(car: Partial<Car>): string[] {
     ];
 }
 
-export async function getAllCars(): Promise<Car[]> {
-    const sheets = getSheets();
+export async function getAllCars(accessToken: string): Promise<Car[]> {
+    const sheets = getSheets(accessToken);
     const response = await sheets.spreadsheets.values.get({
         spreadsheetId: SPREADSHEET_ID,
         range: 'cars!A2:W',
@@ -122,13 +104,13 @@ export async function getAllCars(): Promise<Car[]> {
     return rows.map(rowToCar);
 }
 
-export async function getCarById(id: string): Promise<Car | null> {
-    const cars = await getAllCars();
+export async function getCarById(accessToken: string, id: string): Promise<Car | null> {
+    const cars = await getAllCars(accessToken);
     return cars.find(car => car.id === id) || null;
 }
 
-export async function addCar(car: Partial<Car>): Promise<void> {
-    const sheets = getSheets();
+export async function addCar(accessToken: string, car: Partial<Car>): Promise<void> {
+    const sheets = getSheets(accessToken);
     const row = carToRow(car);
 
     await sheets.spreadsheets.values.append({
@@ -139,8 +121,8 @@ export async function addCar(car: Partial<Car>): Promise<void> {
     });
 }
 
-async function findCarRowIndex(id: string): Promise<number | null> {
-    const sheets = getSheets();
+async function findCarRowIndex(accessToken: string, id: string): Promise<number | null> {
+    const sheets = getSheets(accessToken);
     const response = await sheets.spreadsheets.values.get({
         spreadsheetId: SPREADSHEET_ID,
         range: 'cars!A:A',
@@ -155,11 +137,11 @@ async function findCarRowIndex(id: string): Promise<number | null> {
     return null;
 }
 
-export async function updateCar(id: string, car: Partial<Car>): Promise<boolean> {
-    const rowIndex = await findCarRowIndex(id);
+export async function updateCar(accessToken: string, id: string, car: Partial<Car>): Promise<boolean> {
+    const rowIndex = await findCarRowIndex(accessToken, id);
     if (!rowIndex) return false;
 
-    const sheets = getSheets();
+    const sheets = getSheets(accessToken);
     const row = carToRow({ ...car, id });
 
     await sheets.spreadsheets.values.update({
@@ -172,11 +154,11 @@ export async function updateCar(id: string, car: Partial<Car>): Promise<boolean>
     return true;
 }
 
-export async function deleteCar(id: string): Promise<boolean> {
-    const rowIndex = await findCarRowIndex(id);
+export async function deleteCar(accessToken: string, id: string): Promise<boolean> {
+    const rowIndex = await findCarRowIndex(accessToken, id);
     if (!rowIndex) return false;
 
-    const sheets = getSheets();
+    const sheets = getSheets(accessToken);
 
     // Get spreadsheet to find cars sheet ID
     const spreadsheet = await sheets.spreadsheets.get({
@@ -187,7 +169,7 @@ export async function deleteCar(id: string): Promise<boolean> {
         s => s.properties?.title === 'cars'
     );
 
-    if (!carsSheet?.properties?.sheetId) return false;
+    if (!carsSheet?.properties?.sheetId && carsSheet?.properties?.sheetId !== 0) return false;
 
     await sheets.spreadsheets.batchUpdate({
         spreadsheetId: SPREADSHEET_ID,
@@ -214,8 +196,8 @@ export interface Settings {
     [key: string]: string;
 }
 
-export async function getSettings(): Promise<Settings> {
-    const sheets = getSheets();
+export async function getSettings(accessToken: string): Promise<Settings> {
+    const sheets = getSheets(accessToken);
     const response = await sheets.spreadsheets.values.get({
         spreadsheetId: SPREADSHEET_ID,
         range: 'settings!A2:B',
@@ -233,8 +215,8 @@ export async function getSettings(): Promise<Settings> {
     return settings;
 }
 
-export async function updateSettings(settings: Settings): Promise<void> {
-    const sheets = getSheets();
+export async function updateSettings(accessToken: string, settings: Settings): Promise<void> {
+    const sheets = getSheets(accessToken);
 
     // Get current settings to preserve order
     const response = await sheets.spreadsheets.values.get({
@@ -295,8 +277,8 @@ function testimonialToRow(t: Partial<Testimonial>): string[] {
     ];
 }
 
-export async function getAllTestimonials(): Promise<Testimonial[]> {
-    const sheets = getSheets();
+export async function getAllTestimonials(accessToken: string): Promise<Testimonial[]> {
+    const sheets = getSheets(accessToken);
     const response = await sheets.spreadsheets.values.get({
         spreadsheetId: SPREADSHEET_ID,
         range: 'testimonials!A2:G',
@@ -306,8 +288,8 @@ export async function getAllTestimonials(): Promise<Testimonial[]> {
     return rows.map(rowToTestimonial);
 }
 
-export async function addTestimonial(testimonial: Partial<Testimonial>): Promise<void> {
-    const sheets = getSheets();
+export async function addTestimonial(accessToken: string, testimonial: Partial<Testimonial>): Promise<void> {
+    const sheets = getSheets(accessToken);
     const row = testimonialToRow(testimonial);
 
     await sheets.spreadsheets.values.append({
@@ -318,8 +300,8 @@ export async function addTestimonial(testimonial: Partial<Testimonial>): Promise
     });
 }
 
-async function findTestimonialRowIndex(id: string): Promise<number | null> {
-    const sheets = getSheets();
+async function findTestimonialRowIndex(accessToken: string, id: string): Promise<number | null> {
+    const sheets = getSheets(accessToken);
     const response = await sheets.spreadsheets.values.get({
         spreadsheetId: SPREADSHEET_ID,
         range: 'testimonials!A:A',
@@ -334,11 +316,11 @@ async function findTestimonialRowIndex(id: string): Promise<number | null> {
     return null;
 }
 
-export async function updateTestimonial(id: string, testimonial: Partial<Testimonial>): Promise<boolean> {
-    const rowIndex = await findTestimonialRowIndex(id);
+export async function updateTestimonial(accessToken: string, id: string, testimonial: Partial<Testimonial>): Promise<boolean> {
+    const rowIndex = await findTestimonialRowIndex(accessToken, id);
     if (!rowIndex) return false;
 
-    const sheets = getSheets();
+    const sheets = getSheets(accessToken);
     const row = testimonialToRow({ ...testimonial, id });
 
     await sheets.spreadsheets.values.update({
@@ -351,11 +333,11 @@ export async function updateTestimonial(id: string, testimonial: Partial<Testimo
     return true;
 }
 
-export async function deleteTestimonial(id: string): Promise<boolean> {
-    const rowIndex = await findTestimonialRowIndex(id);
+export async function deleteTestimonial(accessToken: string, id: string): Promise<boolean> {
+    const rowIndex = await findTestimonialRowIndex(accessToken, id);
     if (!rowIndex) return false;
 
-    const sheets = getSheets();
+    const sheets = getSheets(accessToken);
 
     const spreadsheet = await sheets.spreadsheets.get({
         spreadsheetId: SPREADSHEET_ID,
@@ -365,7 +347,7 @@ export async function deleteTestimonial(id: string): Promise<boolean> {
         s => s.properties?.title === 'testimonials'
     );
 
-    if (!testimonialsSheet?.properties?.sheetId) return false;
+    if (!testimonialsSheet?.properties?.sheetId && testimonialsSheet?.properties?.sheetId !== 0) return false;
 
     await sheets.spreadsheets.batchUpdate({
         spreadsheetId: SPREADSHEET_ID,

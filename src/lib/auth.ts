@@ -10,6 +10,8 @@ export interface UserPayload {
     email: string;
     name: string;
     picture?: string;
+    accessToken?: string;
+    refreshToken?: string;
 }
 
 export function isEmailAllowed(email: string): boolean {
@@ -41,7 +43,8 @@ export function getGoogleAuthUrl(): string {
         client_id: clientId,
         redirect_uri: redirectUri,
         response_type: 'code',
-        scope: 'openid email profile',
+        // Added Google Sheets scope for CRUD operations
+        scope: 'openid email profile https://www.googleapis.com/auth/spreadsheets',
         access_type: 'offline',
         prompt: 'consent',
     });
@@ -65,7 +68,27 @@ export async function getGoogleTokens(code: string) {
     return response.json();
 }
 
-export async function getGoogleUserInfo(accessToken: string): Promise<UserPayload> {
+export async function refreshAccessToken(refreshToken: string): Promise<{ access_token: string; expires_in: number } | null> {
+    try {
+        const response = await fetch('https://oauth2.googleapis.com/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+                client_id: import.meta.env.GOOGLE_CLIENT_ID,
+                client_secret: import.meta.env.GOOGLE_CLIENT_SECRET,
+                refresh_token: refreshToken,
+                grant_type: 'refresh_token',
+            }),
+        });
+
+        if (!response.ok) return null;
+        return response.json();
+    } catch {
+        return null;
+    }
+}
+
+export async function getGoogleUserInfo(accessToken: string): Promise<{ email: string; name: string; picture?: string }> {
     const response = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
         headers: { Authorization: `Bearer ${accessToken}` },
     });

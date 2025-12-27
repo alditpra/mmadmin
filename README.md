@@ -18,7 +18,6 @@ Admin dashboard untuk mengelola data mobil, testimonials, dan settings yang ters
 1. Buat project di [Google Cloud Console](https://console.cloud.google.com/)
 2. Enable APIs:
    - Google Sheets API
-   - Google OAuth 2.0
 
 3. Buat OAuth 2.0 Client ID:
    - Application type: Web application
@@ -26,11 +25,7 @@ Admin dashboard untuk mengelola data mobil, testimonials, dan settings yang ters
      - `http://localhost:4321/api/auth/callback` (dev)
      - `https://your-domain.vercel.app/api/auth/callback` (prod)
 
-4. Buat Service Account:
-   - Download JSON credentials
-   - Base64 encode: `cat credentials.json | base64`
-
-5. Share spreadsheet ke Service Account email dengan permission **Editor**
+4. **Pastikan user yang login punya akses Editor ke spreadsheet**
 
 ### 2. Environment Variables
 
@@ -39,7 +34,6 @@ Copy `.env.example` ke `.env` dan isi:
 ```
 GOOGLE_CLIENT_ID=xxx
 GOOGLE_CLIENT_SECRET=xxx
-GOOGLE_SERVICE_ACCOUNT=base64_encoded_json
 SPREADSHEET_ID=xxx
 ADMIN_EMAILS=email1@gmail.com,email2@gmail.com
 JWT_SECRET=random_string
@@ -57,7 +51,7 @@ npm run dev
 
 1. Push ke GitHub
 2. Import project ke Vercel
-3. Set environment variables di Vercel (gunakan production SITE_URL)
+3. Set environment variables (gunakan production SITE_URL)
 4. Deploy
 
 ## Struktur Spreadsheet

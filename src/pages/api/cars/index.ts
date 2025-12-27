@@ -1,9 +1,17 @@
 import type { APIRoute } from 'astro';
 import { getAllCars, addCar } from '../../../lib/sheets';
 
-export const GET: APIRoute = async () => {
+export const GET: APIRoute = async ({ locals }) => {
     try {
-        const cars = await getAllCars();
+        const accessToken = locals.user?.accessToken;
+        if (!accessToken) {
+            return new Response(JSON.stringify({ error: 'Not authenticated' }), {
+                status: 401,
+                headers: { 'Content-Type': 'application/json' },
+            });
+        }
+
+        const cars = await getAllCars(accessToken);
         return new Response(JSON.stringify(cars), {
             status: 200,
             headers: { 'Content-Type': 'application/json' },
@@ -17,10 +25,18 @@ export const GET: APIRoute = async () => {
     }
 };
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, locals }) => {
     try {
+        const accessToken = locals.user?.accessToken;
+        if (!accessToken) {
+            return new Response(JSON.stringify({ error: 'Not authenticated' }), {
+                status: 401,
+                headers: { 'Content-Type': 'application/json' },
+            });
+        }
+
         const car = await request.json();
-        await addCar(car);
+        await addCar(accessToken, car);
         return new Response(JSON.stringify({ success: true }), {
             status: 201,
             headers: { 'Content-Type': 'application/json' },

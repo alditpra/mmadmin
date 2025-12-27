@@ -1,10 +1,18 @@
 import type { APIRoute } from 'astro';
 import { updateTestimonial, deleteTestimonial } from '../../../lib/sheets';
 
-export const PUT: APIRoute = async ({ params, request }) => {
+export const PUT: APIRoute = async ({ params, request, locals }) => {
     try {
+        const accessToken = locals.user?.accessToken;
+        if (!accessToken) {
+            return new Response(JSON.stringify({ error: 'Not authenticated' }), {
+                status: 401,
+                headers: { 'Content-Type': 'application/json' },
+            });
+        }
+
         const testimonial = await request.json();
-        const success = await updateTestimonial(params.id!, testimonial);
+        const success = await updateTestimonial(accessToken, params.id!, testimonial);
         if (!success) {
             return new Response(JSON.stringify({ error: 'Testimonial not found' }), {
                 status: 404,
@@ -24,9 +32,17 @@ export const PUT: APIRoute = async ({ params, request }) => {
     }
 };
 
-export const DELETE: APIRoute = async ({ params }) => {
+export const DELETE: APIRoute = async ({ params, locals }) => {
     try {
-        const success = await deleteTestimonial(params.id!);
+        const accessToken = locals.user?.accessToken;
+        if (!accessToken) {
+            return new Response(JSON.stringify({ error: 'Not authenticated' }), {
+                status: 401,
+                headers: { 'Content-Type': 'application/json' },
+            });
+        }
+
+        const success = await deleteTestimonial(accessToken, params.id!);
         if (!success) {
             return new Response(JSON.stringify({ error: 'Testimonial not found' }), {
                 status: 404,

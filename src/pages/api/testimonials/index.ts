@@ -1,9 +1,17 @@
 import type { APIRoute } from 'astro';
 import { getAllTestimonials, addTestimonial } from '../../../lib/sheets';
 
-export const GET: APIRoute = async () => {
+export const GET: APIRoute = async ({ locals }) => {
     try {
-        const testimonials = await getAllTestimonials();
+        const accessToken = locals.user?.accessToken;
+        if (!accessToken) {
+            return new Response(JSON.stringify({ error: 'Not authenticated' }), {
+                status: 401,
+                headers: { 'Content-Type': 'application/json' },
+            });
+        }
+
+        const testimonials = await getAllTestimonials(accessToken);
         return new Response(JSON.stringify(testimonials), {
             status: 200,
             headers: { 'Content-Type': 'application/json' },
@@ -17,10 +25,18 @@ export const GET: APIRoute = async () => {
     }
 };
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, locals }) => {
     try {
+        const accessToken = locals.user?.accessToken;
+        if (!accessToken) {
+            return new Response(JSON.stringify({ error: 'Not authenticated' }), {
+                status: 401,
+                headers: { 'Content-Type': 'application/json' },
+            });
+        }
+
         const testimonial = await request.json();
-        await addTestimonial(testimonial);
+        await addTestimonial(accessToken, testimonial);
         return new Response(JSON.stringify({ success: true }), {
             status: 201,
             headers: { 'Content-Type': 'application/json' },
